@@ -1,5 +1,7 @@
+### This project is no longer recieving updates, however it will still recieve support for the time being.
 # fl-presence
 Discord Rich Presence with FL Studio
+
 
 Use Ableton? Check out [ableton-presence](https://github.com/Discord-ian/ableton-presence)
 
