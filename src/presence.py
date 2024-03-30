@@ -1,4 +1,4 @@
-from pypresence import Presence
+from pypresence import Presence, exceptions
 import time
 import requests
 import ctypes
@@ -12,7 +12,9 @@ import string
 dev_level = logging.DEBUG
 onLaunch = True
 EnumWindows = ctypes.windll.user32.EnumWindows
-EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int))
+EnumWindowsProc = ctypes.WINFUNCTYPE(
+    ctypes.c_bool, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)
+)
 GetWindowText = ctypes.windll.user32.GetWindowTextW
 GetWindowTextLength = ctypes.windll.user32.GetWindowTextLengthW
 IsWindowVisible = ctypes.windll.user32.IsWindowVisible
@@ -24,7 +26,9 @@ logger = logging.getLogger()
 logger.setLevel(level=dev_level)
 
 
-def foreach_window(hwnd, lParam):  # https://sjohannes.wordpress.com/2012/03/23/win32-python-getting-all-window-titles/
+def foreach_window(
+    hwnd, lParam
+):  # https://sjohannes.wordpress.com/2012/03/23/win32-python-getting-all-window-titles/
     if IsWindowVisible(hwnd):
         length = GetWindowTextLength(hwnd)
         buff = ctypes.create_unicode_buffer(length + 1)
@@ -38,14 +42,15 @@ def outputDebug():
 
 
 def checkForUpdate():
+    phrase = "Making Music"
     global rpcActive
     global storedTitle
     global titles
     EnumWindows(EnumWindowsProc(foreach_window), 0)
     testForFLP = [string for string in titles if ".flp" in string]
     testForUntitled = [string for string in titles if "FL Studio" in string]
-    testForFLP = ''.join(testForFLP)
-    testForUntitled = ''.join(testForUntitled)
+    testForFLP = "".join(testForFLP)
+    testForUntitled = "".join(testForUntitled)
     if testForFLP != "":  # it is not unnamed
         forCheck = testForFLP.split(".flp")[0]  # remove the .flp
     elif testForUntitled != "":
@@ -67,7 +72,9 @@ def checkForUpdate():
         RPC.update(large_image="main", state=phrase, details=details, start=time.time())
         storedTitle = forCheck
         rpcActive = True
-    print("StoredTitle = {} // rpcActive = {}".format(storedTitle, rpcActive))  # debug stuff
+    print(
+        "StoredTitle = {} // rpcActive = {}".format(storedTitle, rpcActive)
+    )  # debug stuff
     titles = []  # prevent the list from looping
 
 
@@ -75,35 +82,48 @@ def checkIfLatest():
     print("Checking for update @ https://discordian.dev/dev/fl/latestversion")
     check = requests.get(url="https://discordian.dev/dev/fl/latestversion")
     if check.json()["version"] != currentVersion:
-        box = ctypes.windll.user32.MessageBoxW(0,
-                                               "There is an update available. You are on version {}, and the latest version is {}.".format(
-                                                   currentVersion, check.json()["version"]), "Version Checker", 1)
+        box = ctypes.windll.user32.MessageBoxW(
+            0,
+            "There is an update available. You are on version {}, and the latest version is {}.".format(
+                currentVersion, check.json()["version"]
+            ),
+            "Version Checker",
+            1,
+        )
         if box == 1:
-            webbrowser.open('https://github.com/Discord-ian/fl-presence/releases')
-            print("Opening webbrowser to https://github.com/Discord-ian/fl-presence/releases")
+            webbrowser.open("https://github.com/Discord-ian/fl-presence/releases")
+            print(
+                "Opening webbrowser to https://github.com/Discord-ian/fl-presence/releases"
+            )
             os._exit(0)
     else:
         print("No update found")
 
 
-658520672976502784
-
-logging.info("If you get an error stating that the RPC handshake failed, Discord is probably not open")
+logging.info(
+    "If you get an error stating that the RPC handshake failed, Discord is probably not open"
+)
 while True:
     if onLaunch:
-        RPC = Presence("658520672976502784")  # discord application ID
+        # discord application ID
         try:
+            logging.info("Attempting to create the presence object")
+            RPC = Presence("658520672976502784")  # discord application ID
             RPC.connect()
         except Exception as e:  # TODO: fix generic exception
             onLaunch = True
-            logging.warning("RPC handshake failed... trying again in 15 seconds")
+            logging.info("RPC handshake failed... trying again in 15 seconds")
+            logging.info(e)
+            time.sleep(15)
         else:
             onLaunch = False
-            try:
-                checkIfLatest()
-            except Exception as e:
-                logging.debug(e)
-            phrase = "Making Music"
         rpcActive = False
-    checkForUpdate()
-    time.sleep(15)  # blocking statement is ok in this case
+    else:
+        # Will cause it to take 15 seconds to truly start but that's not too awful
+        try:
+            checkForUpdate()
+        except exceptions.InvalidID as e:
+            onLaunch = True
+            rpcActive = False
+            logging.info("Discord closed, entering onLaunch loop")
+        time.sleep(15)  # blocking statement is ok in this case
